@@ -1,6 +1,9 @@
 import { Router } from "express";
+import { extractRouter } from "./extract.js";
 
 export const apiRouter = Router();
+
+apiRouter.use(extractRouter);
 
 apiRouter.get("/health", (_req, res) => {
   res.json({
