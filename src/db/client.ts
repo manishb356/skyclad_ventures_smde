@@ -21,6 +21,13 @@ const schemaPath = path.resolve("src/db/schema.sql");
 const schemaSql = fs.readFileSync(schemaPath, "utf8");
 db.exec(schemaSql);
 
+const columns = db
+  .prepare("PRAGMA table_info(jobs)")
+  .all() as Array<{ name: string }>;
+if (!columns.some((column) => column.name === "file_data_base64")) {
+  db.exec("ALTER TABLE jobs ADD COLUMN file_data_base64 TEXT NOT NULL DEFAULT ''");
+}
+
 function mapSession(row: { id: string; created_at: string }): SessionRecord {
   return {
     id: row.id,
@@ -69,6 +76,7 @@ function mapJob(row: Record<string, string | number | null>): JobRecord {
     fileName: String(row.file_name),
     fileHash: String(row.file_hash),
     mimeType: String(row.mime_type),
+    fileDataBase64: String(row.file_data_base64 ?? ""),
     status: row.status as JobRecord["status"],
     errorCode: (row.error_code as string | null) ?? null,
     errorMessage: (row.error_message as string | null) ?? null,
@@ -215,8 +223,12 @@ export const jobRepo = {
   create(input: CreateJobInput): JobRecord {
     db.prepare(
       `
-        INSERT INTO jobs (id, session_id, file_name, file_hash, mime_type, status)
-        VALUES (@id, @sessionId, @fileName, @fileHash, @mimeType, 'QUEUED')
+        INSERT INTO jobs (
+          id, session_id, file_name, file_hash, mime_type, file_data_base64, status
+        )
+        VALUES (
+          @id, @sessionId, @fileName, @fileHash, @mimeType, @fileDataBase64, 'QUEUED'
+        )
       `,
     ).run(input);
     const row = db
@@ -292,6 +304,50 @@ export const jobRepo = {
       completedAt,
     });
     return this.findById(id);
+  },
+
+  claimNextQueued(): JobRecord | null {
+    const now = new Date().toISOString();
+    const claim = db.transaction(() => {
+      const row = db
+        .prepare(
+          "SELECT id FROM jobs WHERE status = 'QUEUED' ORDER BY datetime(queued_at) ASC LIMIT 1",
+        )
+        .get() as { id: string } | undefined;
+      if (!row) return null;
+
+      const updated = db
+        .prepare(
+          "UPDATE jobs SET status = 'PROCESSING', started_at = ? WHERE id = ? AND status = 'QUEUED'",
+        )
+        .run(now, row.id);
+      if (updated.changes === 0) return null;
+
+      return this.findById(row.id);
+    });
+
+    return claim();
+  },
+
+  failStaleProcessing(timeoutMs: number): number {
+    const threshold = new Date(Date.now() - timeoutMs).toISOString();
+    const result = db
+      .prepare(
+        `
+          UPDATE jobs
+          SET
+            status = 'FAILED',
+            error_code = COALESCE(error_code, 'INTERNAL_ERROR'),
+            error_message = COALESCE(error_message, 'Worker interrupted before completion.'),
+            retryable = 1,
+            completed_at = ?
+          WHERE status = 'PROCESSING'
+            AND started_at IS NOT NULL
+            AND datetime(started_at) <= datetime(?)
+        `,
+      )
+      .run(new Date().toISOString(), threshold);
+    return result.changes;
   },
 };
 

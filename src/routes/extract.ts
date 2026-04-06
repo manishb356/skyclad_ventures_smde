@@ -107,6 +107,7 @@ extractRouter.post(
           fileName: file.originalname,
           fileHash,
           mimeType: file.mimetype,
+          fileDataBase64: file.buffer.toString("base64"),
         });
 
         res.status(202).json({

@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS jobs (
   file_name TEXT NOT NULL,
   file_hash TEXT NOT NULL,
   mime_type TEXT NOT NULL,
+  file_data_base64 TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT 'QUEUED',
   error_code TEXT,
   error_message TEXT,

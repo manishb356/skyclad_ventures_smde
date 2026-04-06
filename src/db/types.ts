@@ -42,6 +42,7 @@ export interface JobRecord {
   fileName: string;
   fileHash: string;
   mimeType: string;
+  fileDataBase64: string;
   status: JobStatus;
   errorCode: string | null;
   errorMessage: string | null;
@@ -92,4 +93,5 @@ export interface CreateJobInput {
   fileName: string;
   fileHash: string;
   mimeType: string;
+  fileDataBase64: string;
 }
