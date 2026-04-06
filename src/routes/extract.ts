@@ -5,6 +5,7 @@ import { env } from "../config/env.js";
 import { extractionRepo, jobRepo, sessionRepo } from "../db/client.js";
 import { sha256FromBuffer } from "../lib/hash.js";
 import { AppError } from "../types/errors.js";
+import { extractRateLimit } from "../middleware/rate-limit.js";
 import {
   extractDocument,
   LlmJsonParseError,
@@ -68,6 +69,7 @@ export const extractRouter = Router();
 
 extractRouter.post(
   "/extract",
+  extractRateLimit,
   upload.single("document"),
   async (req, res, next): Promise<void> => {
     try {
