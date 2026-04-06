@@ -5,7 +5,10 @@ import { env } from "../config/env.js";
 import { extractionRepo, jobRepo, sessionRepo } from "../db/client.js";
 import { sha256FromBuffer } from "../lib/hash.js";
 import { AppError } from "../types/errors.js";
-import { extractDocument } from "../services/extraction.service.js";
+import {
+  extractDocument,
+  LlmJsonParseError,
+} from "../services/extraction.service.js";
 
 const ACCEPTED_MIME_TYPES = new Set([
   "image/jpeg",
@@ -117,11 +120,36 @@ extractRouter.post(
       }
 
       const startedAt = Date.now();
-      const normalized = await extractDocument({
-        fileName: file.originalname,
-        mimeType: file.mimetype,
-        contentBase64: file.buffer.toString("base64"),
-      });
+      let normalized;
+      try {
+        normalized = await extractDocument({
+          fileName: file.originalname,
+          mimeType: file.mimetype,
+          contentBase64: file.buffer.toString("base64"),
+        });
+      } catch (error) {
+        if (error instanceof LlmJsonParseError) {
+          const failedExtraction = extractionRepo.upsert({
+            id: randomUUID(),
+            sessionId,
+            fileName: file.originalname,
+            fileHash,
+            mimeType: file.mimetype,
+            rawLlmResponse: error.rawResponse,
+            processingTimeMs: Date.now() - startedAt,
+            status: "FAILED",
+            confidence: "LOW",
+            summary: "Extraction failed after JSON repair retry.",
+          });
+          throw new AppError(
+            422,
+            "LLM_JSON_PARSE_FAIL",
+            "Document extraction failed after retry. The raw response has been stored for review.",
+            { extractionId: failedExtraction.id },
+          );
+        }
+        throw error;
+      }
 
       const extraction = extractionRepo.upsert({
         id: randomUUID(),
