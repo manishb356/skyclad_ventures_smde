@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { createLlmClient } from "./llm/client.js";
+import { createLlmClient } from "./llm-client.service.js";
 import { parseJsonObject } from "../lib/json-repair.js";
 import { validationRepo } from "../db/client.js";
 

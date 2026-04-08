@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../db/client.js";
 import { getQueueWorkerState } from "../queue/worker.js";
-import { createLlmClient } from "../services/llm/client.js";
+import { createLlmClient } from "../services/llm-client.service.js";
 import { extractRouter } from "./extract.js";
 import { jobsRouter } from "./jobs.js";
 import { sessionsRouter } from "./sessions.js";

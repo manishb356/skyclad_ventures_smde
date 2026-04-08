@@ -1,7 +1,7 @@
-import type { NormalizedExtraction } from "./extraction.types.js";
+import type { NormalizedExtraction } from "../types/extraction.js";
+import { EXTRACTION_PROMPT } from "../lib/prompts.js";
 import { parseJsonObject } from "../lib/json-repair.js";
-import { createLlmClient } from "./llm/client.js";
-import { EXTRACTION_PROMPT } from "./prompts.js";
+import { createLlmClient } from "./llm-client.service.js";
 
 interface ExtractDocumentInput {
   fileName: string;

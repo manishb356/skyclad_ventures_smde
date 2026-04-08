@@ -1,5 +1,5 @@
-import { env } from "../../config/env.js";
-import type { LlmClient, VisionPromptInput } from "./types.js";
+import { env } from "../config/env.js";
+import type { LlmClient, VisionPromptInput } from "../types/llm.js";
 
 function withTimeout(signalTimeoutMs: number): AbortController {
   const controller = new AbortController();
